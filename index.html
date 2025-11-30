@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dental AI Receptionist</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 360px;
+        }
+        button {
+            padding: 15px 30px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #status { margin-top: 20px; color: #555; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🦷 Dental AI Agent</h2>
+        <p>Emergency Triage System</p>
+        <button id="call-btn">Call Receptionist</button>
+        <div id="status">Status: Ready</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/vapi.min.js"></script>
+
+    <script>
+        // ---- CONFIGURATION ----
+        const apiKey = "99199dbc-0ef9-4e13-b9b5-b99d60cb5a45"; // Use Public Key here
+        const assistantId = "657109e3-0f8e-4b61-8827-b39e5a5febf7";
+        // -----------------------
+
+        // 2. Initialize Vapi Instance
+        // The script tag above exposes "window.vapiSDK" or just "Vapi" class depending on version.
+        // The standard CDN exposes a global 'Vapi' class.
+        var vapi = new Vapi(apiKey);
+
+        const btn = document.getElementById("call-btn");
+        const statusEl = document.getElementById("status");
+
+        // 3. Register Event Listeners
+        vapi.on("call-start", () => {
+            console.log("Call has started");
+            statusEl.innerText = "Status: 🟢 Live Call";
+            btn.innerText = "End Call";
+            btn.onclick = () => vapi.stop(); // Toggle button action
+        });
+
+        vapi.on("call-end", () => {
+            console.log("Call has ended");
+            statusEl.innerText = "Status: Call Ended";
+            btn.innerText = "Call Receptionist";
+            btn.onclick = startCall; // Reset button action
+        });
+
+        vapi.on("speech-start", () => {
+            statusEl.innerText = "Status: 🗣️ AI Speaking...";
+        });
+
+        vapi.on("speech-end", () => {
+            statusEl.innerText = "Status: 🟢 Live Call";
+        });
+
+        vapi.on("error", (e) => {
+            console.error("Vapi Error:", e);
+            statusEl.innerText = "Status: Error (Check Console)";
+        });
+
+        // 4. Define Start Logic
+        async function startCall() {
+            statusEl.innerText = "Status: Connecting...";
+            
+            try {
+                // Pass the assistantID here to start the specific agent
+                await vapi.start(assistantId);
+            } catch (err) {
+                console.error("Failed to connect:", err);
+                statusEl.innerText = "Status: Connection Failed";
+            }
+        }
+
+        // Attach initial click handler
+        btn.onclick = startCall;
+
+    </script>
+</body>
+</html>
