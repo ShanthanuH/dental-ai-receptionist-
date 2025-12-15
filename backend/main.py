@@ -1,10 +1,10 @@
 # FILE: backend/main.py
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+import json
 
 app = FastAPI()
 
-# SECURITY: Allow Vapi to talk to this server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,7 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# FAKE DATABASE
+# THE REAL DATABASE
 appointment_slots = {
     "monday": ["10:00 AM", "2:00 PM"],
     "tuesday": ["11:00 AM", "4:00 PM"],
@@ -24,35 +24,45 @@ appointment_slots = {
 
 @app.post("/check-availability")
 async def check_availability(request: Request):
-    # 1. GRAB THE RAW DATA (No validation, just grab it)
-    body = await request.json()
+    # 1. Get the raw data
+    data = await request.json()
+    print(f"📨 Data Received: {data}")
     
-    # 2. SPY ON IT: Print exactly what Vapi sent
-    print(f"🕵️ DEBUG: Raw Vapi Payload: {body}")
+    day = None
 
-    # 3. Try to find the 'day' in the mess
-    # Vapi sometimes sends it directly: {"day": "Monday"}
-    # Or sometimes nested: {"message": {"toolCalls": [...]}}
-    
-    day_requested = None
-    
-    # simple check: is 'day' right at the top?
-    if "day" in body:
-        day_requested = body["day"]
-    
-    # If we found a day, proceed
-    if day_requested:
-        day_clean = day_requested.lower().strip()
-        print(f"✅ FOUND DAY: {day_clean}")
+    # 2. UNWRAP THE RUSSIAN DOLL (Vapi Structure)
+    try:
+        if "message" in data and "toolCalls" in data["message"]:
+            # Dig into the nested structure
+            tool_call = data["message"]["toolCalls"][0]
+            arguments = tool_call["function"]["arguments"]
+            
+            # Vapi sometimes sends arguments as a String, sometimes as a Dict
+            # We handle both cases here:
+            if isinstance(arguments, str):
+                arguments = json.loads(arguments)
+            
+            day = arguments.get("day")
+    except Exception as e:
+        print(f"⚠️ Error parsing Vapi structure: {e}")
+
+    # 3. BACKUP PLAN (If sending simple JSON)
+    if not day and "day" in data:
+        day = data["day"]
+
+    # 4. THE BUSINESS LOGIC
+    if day:
+        day_clean = day.lower().strip()
+        print(f"🗓️ Checking schedule for: {day_clean}")
         
         if day_clean in appointment_slots:
             slots = appointment_slots[day_clean]
             return {"result": f"Yes, we have openings on {day_clean} at {', '.join(slots)}."}
         else:
-            return {"result": "I'm sorry, we are fully booked on that day."}
+            return {"result": f"I'm sorry, we are fully booked on {day_clean}."}
     
-    # If we couldn't find the day, tell Vapi "Error" but keep the server running
-    print("❌ ERROR: Could not find 'day' in the payload.")
+    # 5. FAILURE RESPONSE
+    print("❌ Could not find 'day' in payload")
     return {"result": "I could not understand which day you wanted. Please try again."}
 
 @app.get("/")
