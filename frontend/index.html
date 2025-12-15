@@ -5,94 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dental AI Receptionist</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; }
-        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        button { background-color: #007bff; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 30px; cursor: pointer; transition: background 0.3s; }
-        button:hover { background-color: #0056b3; }
-        #status { margin-top: 20px; color: #666; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; width: 350px; }
+        h1 { margin-bottom: 0.5rem; color: #333; }
+        p { color: #666; margin-bottom: 2rem; }
+        
+        .call-btn { 
+            background: linear-gradient(135deg, #007bff, #0056b3); 
+            color: white; border: none; padding: 16px 32px; 
+            font-size: 18px; border-radius: 50px; cursor: pointer; 
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+            transition: transform 0.2s, box-shadow 0.2s; 
+        }
+        .call-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,123,255,0.4); }
+        .call-btn:active { transform: translateY(0); }
+        
+        #status { margin-top: 20px; font-weight: 500; color: #888; transition: color 0.3s;}
+        .pulse { animation: pulse 2s infinite; color: #28a745 !important; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js"></script>
 </head>
 <body>
     <div class="card">
         <h1>🦷 Dental AI Agent</h1>
-        <p>Emergency Triage System</p>
-        <button id="start-btn">📞 Call Receptionist</button>
+        <p>Emergency Triage & Scheduling</p>
+        <button id="start-btn" class="call-btn">📞 Call Receptionist</button>
         <div id="status">Status: Offline</div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js"></script>
     <script>
+        // REPLACE THESE WITH YOUR ACTUAL KEYS LATER
         const apiKey = "YOUR_PUBLIC_KEY_HERE"; 
-        const assistantId = "YOUR_ASSISTANT_ID_HERE";
-
-        var vapiInstance = null;
-
-        (function (d, t) {
-            var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
-            g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-            g.defer = true;
-            g.async = true;
-            s.parentNode.insertBefore(g, s);
-
-            g.onload = function () {
-                vapiInstance = window.vapiSDK.run({
-                    apiKey: apiKey,
-                    assistant: assistantId,
-                });
-            };
-        })(document, "script");
+        const assistantId = "YOUR_ASSISTANT_ID_HERE"; 
+        
+        var vapiInstance = window.vapiSDK.run({
+            apiKey: apiKey,
+            assistant: assistantId,
+        });
 
         const btn = document.getElementById('start-btn');
         const status = document.getElementById('status');
 
         btn.addEventListener('click', () => {
             if (vapiInstance) {
-                vapiInstance.start();
                 status.innerText = "Status: Connecting...";
-                
-                vapiInstance.on('call-start', () => {
-                    status.innerText = "Status: 🟢 Live Call";
-                });
-
-                vapiInstance.on('call-end', () => {
-                    status.innerText = "Status: Call Ended";
-                });
+                vapiInstance.start();
             }
+        });
+
+        vapiInstance.on('call-start', () => {
+            status.innerText = "Status: 🟢 Live Call";
+            status.classList.add('pulse');
+        });
+
+        vapiInstance.on('call-end', () => {
+            status.innerText = "Status: Call Ended";
+            status.classList.remove('pulse');
+            setTimeout(() => status.innerText = "Status: Offline", 2000);
+        });
+
+        vapiInstance.on('error', (e) => {
+            console.error(e);
+            status.innerText = "Status: Error (Check Console)";
         });
     </script>
 </body>
 </html>
-
-
-
-class Solution:
-    def trap(self, height: List[int]) -> int:
-
-        res = 0
-
-        l = 0
-        r = len(height)-1
-
-        leftmax = height[l]
-        rightmax = height[r]
-
-        while l<r:
-            if leftmax < height[l]:
-                l+=1
-                leftmax = max(leftmax, height[l])
-
-                res += leftmax-height[l]
-
-            else:
-                r-=1
-
-                rightmax = max(rightmax, height[r])
-
-                res+=rightmax-height[r]
-        
-        return res 
-
-
-
-
-        
