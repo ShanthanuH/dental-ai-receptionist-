@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import datetime
+from datetime import datetime, timedelta
 import os
 import json
 
@@ -38,15 +39,49 @@ def home():
 
 @app.get("/check_availability")
 def check_availability(day: str):
-    # day format should be YYYY-MM-DD ideally, but let's handle simple string checks first
-    # For a demo, we will just list events on that day to see what's busy.
-    
-    # Simple Logic: Convert "Tuesday" to a date? 
-    # To keep it simple for the AI, let's ask the AI to send ISO dates (YYYY-MM-DD).
-    # But for now, we'll return a mock response to ensure connection works, 
-    # OR you can implement real "list events" logic if you want to go deep.
-    
-    return {"message": "Calendar connected. Please ask for a specific slot to book."}
+    try:
+        # 1. Parse the requested date (Expected format: YYYY-MM-DD)
+        date_obj = datetime.strptime(day, "%Y-%m-%d")
+        
+        # 2. Define the "Work Day" (e.g., 9 AM to 6 PM)
+        # We need RFC3339 format (e.g., "2025-12-17T09:00:00+05:30")
+        # assuming Indian Standard Time (+05:30)
+        start_time = date_obj.replace(hour=9, minute=0).isoformat() + "+05:30"
+        end_time = date_obj.replace(hour=18, minute=0).isoformat() + "+05:30"
+
+        # 3. Ask Google: "Give me all events between 9 AM and 6 PM"
+        # REPLACE THIS EMAIL WITH YOUR OWN!
+        CALENDAR_ID = 'shaanhem@gmail.com' 
+        
+        events_result = service.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=start_time,
+            timeMax=end_time,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+        
+        events = events_result.get('items', [])
+
+        # 4. Formulate the Answer
+        if not events:
+            return {"message": f"Good news! The doctor is completely free on {day} from 9 AM to 6 PM."}
+        
+        busy_times = []
+        for event in events:
+            # Get the start time of the event (e.g., "2025-12-17T14:00:00+05:30")
+            start = event['start'].get('dateTime', event['start'].get('date'))
+            # Clean it up to just show HH:MM (e.g., "14:00")
+            clean_time = start.split('T')[1][:5]
+            busy_times.append(clean_time)
+            
+        return {
+            "message": f"On {day}, the doctor is busy at these times: {', '.join(busy_times)}. Any other time is free."
+        }
+
+    except Exception as e:
+        print(f"Error checking availability: {e}")
+        return {"message": "I'm having trouble checking the schedule specifically, but you can try proposing a time."}
 
 @app.post("/book_appointment")
 def book_appointment(appt: Appointment):
