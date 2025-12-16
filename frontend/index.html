@@ -3,194 +3,759 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tanvi's KidCare - AI Receptionist</title>
-    <script src="https://unpkg.com/@vapi-ai/web/dist/vapi.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>Tanvi's KidCare | AI-Powered Pediatric Dentistry</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --accent: #ec4899;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --bg-dark: #0a0a0f;
+            --bg-surface: #1a1a24;
+            --bg-card: #252530;
+            --text-white: #ffffff;
+            --text-muted: #94a3b8;
+            --border: #2d2d3a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #e0f2fe 0%, #ffffff 100%);
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #1e293b;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text-white);
+            background: var(--bg-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
         }
 
-        .card {
-            background: white;
-            padding: 2.5rem;
-            border-radius: 24px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-            border: 1px solid #e2e8f0;
-        }
-
-        .logo {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin: 0 0 0.5rem 0;
-            color: #0f172a;
-        }
-
-        p {
-            color: #64748b;
-            margin-bottom: 2rem;
-            line-height: 1.5;
-        }
-
-        button {
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        /* Subtle animated gradient overlay */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+            z-index: 0;
+            animation: gradientMove 20s ease infinite;
+        }
+
+        @keyframes gradientMove {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Grid pattern overlay */
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* --- Navbar --- */
+        nav {
+            background: rgba(26, 26, 36, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 5%;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        nav.scrolled {
+            background: rgba(26, 26, 36, 0.95);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-white);
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            gap: 0.5rem;
         }
 
-        button:hover {
-            background-color: #1d4ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+        .nav-logo-icon {
+            font-size: 2rem;
+            animation: float 3s ease-in-out infinite;
         }
 
-        button:active {
-            transform: translateY(0);
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
         }
 
-        button.active {
-            background-color: #dc2626;
-            animation: pulse 2s infinite;
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        
+        .nav-links span { 
+            cursor: pointer; 
+            transition: all 0.2s;
+            position: relative;
         }
 
-        .status {
-            margin-top: 1.5rem;
-            font-size: 0.875rem;
-            color: #94a3b8;
-            min-height: 20px;
+        .nav-links span:hover {
+            color: var(--primary-light);
         }
 
-        .error-log {
-            margin-top: 1rem;
-            padding: 10px;
-            background: #fef2f2;
-            color: #991b1b;
-            font-size: 0.75rem;
-            border-radius: 8px;
-            display: none;
+        .nav-links span::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links span:hover::after { width: 100%; }
+
+        /* --- Main Container --- */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 120px 5% 80px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- Hero Grid --- */
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            margin-bottom: 6rem;
+        }
+
+        /* Left Side - Text Content */
+        .hero-content h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            color: var(--text-white);
+            letter-spacing: -0.03em;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            line-height: 1.8;
+            animation: fadeInUp 0.8s ease 0.2s backwards;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 3rem;
+            margin-top: 3rem;
+            animation: fadeInUp 0.8s ease 0.4s backwards;
+        }
+
+        .stat-item {
             text-align: left;
-            word-break: break-all;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-white);
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        /* Right Side - AI Interface */
+        .ai-interface {
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 32px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.8s ease 0.3s backwards;
+            transition: all 0.3s ease;
+        }
+
+        .ai-interface:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .ai-interface::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        /* Glow effect on card */
+        .ai-interface::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .ai-interface:hover::after {
+            opacity: 1;
+        }
+
+        /* Status Badge */
+        .status-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #475569;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.active {
+            background-color: var(--success);
+            box-shadow: 0 0 16px var(--success);
+            animation: pulse 2s ease-in-out infinite;
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        .live-indicator {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Voice Visualizer */
+        .visualizer-wrapper {
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .visualizer-wrapper.active {
+            opacity: 1;
+        }
+
+        .visualizer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 100%;
+        }
+
+        .bar {
+            width: 6px;
+            background: linear-gradient(180deg, var(--primary-light), var(--primary));
+            border-radius: 8px;
+            transition: all 0.1s ease;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .bar:nth-child(1) { height: 20px; animation: bounce 0.6s infinite ease-in-out; }
+        .bar:nth-child(2) { height: 35px; animation: bounce 0.6s infinite ease-in-out 0.1s; }
+        .bar:nth-child(3) { height: 55px; animation: bounce 0.6s infinite ease-in-out 0.2s; }
+        .bar:nth-child(4) { height: 40px; animation: bounce 0.6s infinite ease-in-out 0.3s; }
+        .bar:nth-child(5) { height: 25px; animation: bounce 0.6s infinite ease-in-out 0.4s; }
+
+        @keyframes bounce {
+            0%, 100% { transform: scaleY(0.4); }
+            50% { transform: scaleY(1.2); }
+        }
+
+        /* AI Card Content */
+        .ai-card-content h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: 0.75rem;
+        }
+
+        .ai-card-content p {
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Call Button */
+        .call-btn {
+            width: 100%;
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: none;
+            font-size: 1.125rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--text-white);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .call-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .call-btn:hover::before {
+            left: 100%;
+        }
+
+        .call-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.5);
+        }
+
+        .call-btn.active {
+            background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
+            box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.3);
+            animation: activeCallPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes activeCallPulse {
+            0%, 100% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0.15); }
+        }
+
+        .call-btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-icon {
+            font-size: 1.5rem;
+        }
+
+        /* Error Message */
+        .error-message {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            color: #fca5a5;
+            font-size: 0.875rem;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Features Section */
+        .features-section {
+            margin-top: 6rem;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-white);
+            margin-bottom: 3rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .feature-card h3 {
+            font-size: 1.375rem;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .hero-content {
+                text-align: center;
+            }
+
+            .hero-content h1 {
+                font-size: 3rem;
+            }
+
+            .stats-row {
+                justify-content: center;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .hero-content h1 {
+                font-size: 2.25rem;
+            }
+
+            .hero-content p {
+                font-size: 1rem;
+            }
+
+            .ai-interface {
+                padding: 2rem;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="bg-gradient"></div>
+    <div class="grid-overlay"></div>
 
-    <div class="card">
-        <div class="logo">🦷</div>
-        <h1>Tanvi's KidCare</h1>
-        <p>Talk to our AI Receptionist to check availability and schedule appointments.</p>
-        
-        <button id="start-btn">
-            <span>📞 Call Reception</span>
-        </button>
+    <nav id="navbar">
+        <div class="nav-logo">
+            <span class="nav-logo-icon">🦷</span>
+            <span>Tanvi's KidCare</span>
+        </div>
+        <div class="nav-links">
+            <span>Services</span>
+            <span>Our Team</span>
+            <span>Insurance</span>
+            <span>Contact</span>
+        </div>
+    </nav>
 
-        <div class="status" id="status-text">Ready to connect</div>
-        <div class="error-log" id="error-log"></div>
+    <div class="container">
+        <div class="hero-grid">
+            <!-- Left: Text Content -->
+            <div class="hero-content">
+                <h1>
+                    Smart Pediatric Care,<br>
+                    <span class="gradient-text">Available 24/7</span>
+                </h1>
+                <p>
+                    Experience the future of dental appointments. Our AI-powered receptionist 
+                    schedules your child's visit instantly—no hold times, no hassle.
+                </p>
+
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-number">2,400+</span>
+                        <span class="stat-label">Happy Families</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">4.9★</span>
+                        <span class="stat-label">Average Rating</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">24/7</span>
+                        <span class="stat-label">AI Support</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: AI Interface -->
+            <div class="ai-interface">
+                <div class="status-container">
+                    <div class="status-badge">
+                        <div class="status-dot" id="status-dot"></div>
+                        <span id="status-text">Ready to Connect</span>
+                    </div>
+                    <span class="live-indicator" id="timer"></span>
+                </div>
+
+                <div class="visualizer-wrapper" id="visualizer-wrapper">
+                    <div class="visualizer">
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                    </div>
+                </div>
+
+                <div class="ai-card-content">
+                    <h2>Talk to Our AI Receptionist</h2>
+                    <p>Press the button below to start. Our assistant can help you book, reschedule, or answer questions about appointments.</p>
+                </div>
+
+                <button class="call-btn" id="call-btn">
+                    <span class="btn-icon">📞</span>
+                    <span id="btn-text">Start Voice Call</span>
+                </button>
+
+                <div class="error-message" id="error-msg"></div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="features-section">
+            <h2 class="section-title">Why Choose Our AI Assistant?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">⚡</span>
+                    <h3>Instant Scheduling</h3>
+                    <p>Book your child's appointment in seconds. No waiting on hold, no back-and-forth emails—just tell our AI when you'd like to come in.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🔒</span>
+                    <h3>Secure & Private</h3>
+                    <p>Your family's information is protected with enterprise-grade encryption. HIPAA-compliant and fully confidential.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🌙</span>
+                    <h3>Always Available</h3>
+                    <p>Call anytime, day or night. Our AI receptionist never sleeps, so you can book appointments on your schedule.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script>
-        // --- CONFIGURATION ---
-        // PLEASE DOUBLE CHECK YOUR PUBLIC KEY STARTS WITH "vapi-public-"
+    <script type="module">
+        import Vapi from 'https://esm.sh/@vapi-ai/web';
+
+        // Configuration
         const apiKey = "c6e9b03f-79a3-479b-af13-7ddc002ebc09"; 
-        const assistantId = "657109e3-0f8e-4b61-8827-b39e5a5febf7"; 
-        // ---------------------
+        const assistantId = "657109e3-0f8e-4b61-8827-b39e5a5febf7";
 
         const vapi = new Vapi(apiKey);
-        const btn = document.getElementById("start-btn");
+        const callBtn = document.getElementById("call-btn");
         const statusText = document.getElementById("status-text");
-        const errorLog = document.getElementById("error-log");
+        const statusDot = document.getElementById("status-dot");
+        const btnText = document.getElementById("btn-text");
+        const visualizerWrapper = document.getElementById("visualizer-wrapper");
+        const errorMsg = document.getElementById("error-msg");
+        const timer = document.getElementById("timer");
+        const navbar = document.getElementById("navbar");
 
-        // Helper to show errors on screen
-        function logError(msg) {
-            console.error(msg);
-            errorLog.style.display = 'block';
-            errorLog.innerText = "⚠️ Error: " + msg;
-            statusText.innerText = "Connection Failed";
+        let callStartTime = null;
+        let timerInterval = null;
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // Update UI state
+        function setStatus(state) {
+            errorMsg.style.display = 'none';
+            
+            if (state === "idle") {
+                statusText.textContent = "Ready to Connect";
+                statusDot.classList.remove("active");
+                visualizerWrapper.classList.remove("active");
+                callBtn.classList.remove("active");
+                btnText.textContent = "Start Voice Call";
+                timer.textContent = "";
+                if (timerInterval) clearInterval(timerInterval);
+            } else if (state === "connecting") {
+                statusText.textContent = "Connecting...";
+                btnText.textContent = "Establishing Connection";
+            } else if (state === "active") {
+                statusText.textContent = "Live Call";
+                statusDot.classList.add("active");
+                visualizerWrapper.classList.add("active");
+                callBtn.classList.add("active");
+                btnText.textContent = "End Call";
+                callStartTime = Date.now();
+                startTimer();
+            }
         }
 
-        btn.addEventListener("click", async () => {
-            errorLog.style.display = 'none';
-            
-            if (btn.classList.contains("active")) {
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Button handler
+        callBtn.addEventListener("click", async () => {
+            if (callBtn.classList.contains("active")) {
                 vapi.stop();
+                setStatus("idle");
             } else {
-                btn.innerHTML = "<span>⏳ Connecting...</span>";
-                statusText.innerText = "Establishing secure connection...";
-                
+                setStatus("connecting");
                 try {
                     await vapi.start(assistantId);
                 } catch (e) {
-                    logError(e.message);
-                    btn.innerHTML = "<span>📞 Call Reception</span>";
+                    console.error(e);
+                    errorMsg.textContent = "Connection failed: " + (e.message || "Unknown error");
+                    errorMsg.style.display = "block";
+                    setStatus("idle");
                 }
             }
         });
 
-        // --- VAPI EVENTS ---
-
+        // Vapi events
         vapi.on("call-start", () => {
             console.log("Call started");
-            btn.classList.add("active");
-            btn.innerHTML = "<span>🛑 End Call</span>";
-            statusText.innerText = "Listening...";
+            setStatus("active");
         });
 
         vapi.on("call-end", () => {
             console.log("Call ended");
-            btn.classList.remove("active");
-            btn.innerHTML = "<span>📞 Call Reception</span>";
-            statusText.innerText = "Call ended.";
-        });
-
-        vapi.on("speech-start", () => {
-            statusText.innerText = "User speaking...";
-        });
-
-        vapi.on("speech-end", () => {
-            statusText.innerText = "AI thinking...";
+            setStatus("idle");
         });
 
         vapi.on("error", (e) => {
-            console.error("Vapi Error:", e);
-            // Sometimes the error object is complex, try to grab the message
-            const msg = e.error?.message || e.message || JSON.stringify(e);
-            logError(msg);
-            btn.classList.remove("active");
-            btn.innerHTML = "<span>📞 Call Reception</span>";
+            console.error("Vapi error:", e);
+            errorMsg.textContent = "Error: " + (e.error?.message || e.message || "Unknown error");
+            errorMsg.style.display = "block";
+            setStatus("idle");
         });
     </script>
 </body>
