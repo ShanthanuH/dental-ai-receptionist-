@@ -4,75 +4,70 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dental AI Receptionist</title>
+    <script src="https://unpkg.com/@vapi-ai/web/dist/vapi.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; margin: 0; }
-        .card { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; width: 350px; }
-        h1 { margin-bottom: 0.5rem; color: #333; }
-        p { color: #666; margin-bottom: 2rem; }
-        
-        .call-btn { 
-            background: linear-gradient(135deg, #007bff, #0056b3); 
-            color: white; border: none; padding: 16px 32px; 
-            font-size: 18px; border-radius: 50px; cursor: pointer; 
-            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
-            transition: transform 0.2s, box-shadow 0.2s; 
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #f0f9ff; 
+            margin: 0;
         }
-        .call-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,123,255,0.4); }
-        .call-btn:active { transform: translateY(0); }
-        
-        #status { margin-top: 20px; font-weight: 500; color: #888; transition: color 0.3s;}
-        .pulse { animation: pulse 2s infinite; color: #28a745 !important; }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+        button { 
+            padding: 20px 40px; 
+            font-size: 20px; 
+            background-color: #2563eb; 
+            color: white; 
+            border: none; 
+            border-radius: 50px; 
+            cursor: pointer; 
+            transition: transform 0.2s; 
+            box-shadow: 0 4px 14px 0 rgba(37,99,235,0.39); 
         }
+        button:hover { transform: scale(1.05); background-color: #1d4ed8; }
+        button:active { transform: scale(0.95); }
     </style>
-    <script src="https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js"></script>
 </head>
 <body>
-    <div class="card">
-        <h1>🦷 Dental AI Agent</h1>
-        <p>Emergency Triage & Scheduling</p>
-        <button id="start-btn" class="call-btn">📞 Call Receptionist</button>
-        <div id="status">Status: Offline</div>
-    </div>
+
+    <button id="start-btn">📞 Call Dental Receptionist</button>
 
     <script>
-        // REPLACE THESE WITH YOUR ACTUAL KEYS LATER
-        const apiKey = "YOUR_PUBLIC_KEY_HERE"; 
-        const assistantId = "YOUR_ASSISTANT_ID_HERE"; 
-        
-        var vapiInstance = window.vapiSDK.run({
-            apiKey: apiKey,
-            assistant: assistantId,
-        });
+        // Your Keys (Directly injected)
+        const apiKey = "c6e9b03f-79a3-479b-af13-7ddc002ebc09"; 
+        const assistantId = "657109e3-0f8e-4b61-8827-b39e5a5febf7"; 
 
-        const btn = document.getElementById('start-btn');
-        const status = document.getElementById('status');
+        // Initialize Vapi
+        const vapi = new Vapi(apiKey);
+        const btn = document.getElementById("start-btn");
 
-        btn.addEventListener('click', () => {
-            if (vapiInstance) {
-                status.innerText = "Status: Connecting...";
-                vapiInstance.start();
+        // Button Logic
+        btn.addEventListener("click", () => {
+            if (btn.innerText.includes("Call")) {
+                btn.innerText = "Connecting...";
+                vapi.start(assistantId);
+            } else {
+                vapi.stop();
             }
         });
 
-        vapiInstance.on('call-start', () => {
-            status.innerText = "Status: 🟢 Live Call";
-            status.classList.add('pulse');
+        // Vapi Events
+        vapi.on("call-start", () => {
+            btn.innerText = "🔴 In Call (Click to End)";
+            btn.style.backgroundColor = "#dc2626"; // Red
         });
 
-        vapiInstance.on('call-end', () => {
-            status.innerText = "Status: Call Ended";
-            status.classList.remove('pulse');
-            setTimeout(() => status.innerText = "Status: Offline", 2000);
+        vapi.on("call-end", () => {
+            btn.innerText = "📞 Call Dental Receptionist";
+            btn.style.backgroundColor = "#2563eb"; // Blue
         });
 
-        vapiInstance.on('error', (e) => {
+        vapi.on("error", (e) => {
             console.error(e);
-            status.innerText = "Status: Error (Check Console)";
+            alert("Error connecting. Check console for details.");
+            btn.innerText = "📞 Call Dental Receptionist";
         });
     </script>
 </body>
