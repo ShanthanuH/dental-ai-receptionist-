@@ -11,7 +11,6 @@ import json
 app = FastAPI()
 
 # --- CONFIGURATION ---
-# We define the scope (permissions) we need
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # Load credentials from Environment Variable (Best for Render)
@@ -28,29 +27,40 @@ else:
 
 service = build('calendar', 'v3', credentials=creds)
 
+# --- DATA MODELS ---
+
+# 1. Model for checking availability (The AI sends just the day)
+class DateRequest(BaseModel):
+    day: str  # Format: "2025-12-17"
+
+# 2. Model for booking (The AI sends day, time, and name)
 class Appointment(BaseModel):
-    day: str  # Format: "2024-05-20" (ISO format is best for machines)
+    day: str  # Format: "2024-05-20"
     time: str # Format: "10:00"
     name: str
+
+# --- ENDPOINTS ---
 
 @app.get("/")
 def home():
     return {"status": "active", "integration": "Google Calendar"}
 
-@app.get("/check_availability")
-def check_availability(day: str):
+# UPDATED: Changed to POST and dashed-url to match the AI's request
+@app.post("/check-availability")
+def check_availability(request: DateRequest):
+    day = request.day
+    print(f"Checking availability for: {day}") # Log for debugging
+
     try:
         # 1. Parse the requested date (Expected format: YYYY-MM-DD)
         date_obj = datetime.strptime(day, "%Y-%m-%d")
         
-        # 2. Define the "Work Day" (e.g., 9 AM to 6 PM)
-        # We need RFC3339 format (e.g., "2025-12-17T09:00:00+05:30")
-        # assuming Indian Standard Time (+05:30)
+        # 2. Define the "Work Day" (9 AM to 6 PM IST)
+        # RFC3339 format with +05:30 offset
         start_time = date_obj.replace(hour=9, minute=0).isoformat() + "+05:30"
         end_time = date_obj.replace(hour=18, minute=0).isoformat() + "+05:30"
 
         # 3. Ask Google: "Give me all events between 9 AM and 6 PM"
-        # REPLACE THIS EMAIL WITH YOUR OWN!
         CALENDAR_ID = 'shaanhem@gmail.com' 
         
         events_result = service.events().list(
@@ -69,11 +79,12 @@ def check_availability(day: str):
         
         busy_times = []
         for event in events:
-            # Get the start time of the event (e.g., "2025-12-17T14:00:00+05:30")
+            # Get the start time
             start = event['start'].get('dateTime', event['start'].get('date'))
             # Clean it up to just show HH:MM (e.g., "14:00")
-            clean_time = start.split('T')[1][:5]
-            busy_times.append(clean_time)
+            if 'T' in start:
+                clean_time = start.split('T')[1][:5]
+                busy_times.append(clean_time)
             
         return {
             "message": f"On {day}, the doctor is busy at these times: {', '.join(busy_times)}. Any other time is free."
@@ -89,7 +100,10 @@ def book_appointment(appt: Appointment):
         # 1. Parse the date and time
         # We expect the AI to send: day="2023-12-25", time="14:00"
         start_time_str = f"{appt.day}T{appt.time}:00"
-        end_time_str = f"{appt.day}T{int(appt.time.split(':')[0]) + 1}:{appt.time.split(':')[1]}:00" # 1 hour duration
+        # Calculate end time (1 hour later)
+        appt_dt = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M:%S")
+        end_dt = appt_dt + timedelta(hours=1)
+        end_time_str = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
         
         # 2. Create the Event Object
         event = {
@@ -98,7 +112,7 @@ def book_appointment(appt: Appointment):
             'description': 'Booked via AI Receptionist',
             'start': {
                 'dateTime': start_time_str,
-                'timeZone': 'Asia/Kolkata', # Change to your timezone
+                'timeZone': 'Asia/Kolkata',
             },
             'end': {
                 'dateTime': end_time_str,
@@ -116,5 +130,5 @@ def book_appointment(appt: Appointment):
         }
         
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error booking: {e}")
         return {"status": "error", "message": str(e)}
