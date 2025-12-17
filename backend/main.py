@@ -1,23 +1,20 @@
 # backend/main.py
 from fastapi import FastAPI, Request
-from pydantic import BaseModel
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 import os
 import json
-import dateparser # NEW: Handles "18th Dec", "Tomorrow", etc.
+import dateparser
 
 app = FastAPI()
 
 # --- CONFIGURATION ---
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-CALENDAR_ID = 'shaanhem@gmail.com' # Your calendar ID
-TIMEZONE_OFFSET = "+05:30" # IST Offset
+CALENDAR_ID = 'shaanhem@gmail.com'
+TIMEZONE_OFFSET = "+05:30"
 
-# Load credentials
 CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-
 if CREDENTIALS_JSON:
     creds_dict = json.loads(CREDENTIALS_JSON)
     creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
@@ -26,34 +23,13 @@ else:
 
 service = build('calendar', 'v3', credentials=creds)
 
-# --- DATA MODELS ---
-
-# We use "day" but accept "date" too, just in case the AI gets confused.
-# defaulting to None prevents the 422 Crash.
-class DateRequest(BaseModel):
-    day: str = None
-    date: str = None 
-
-class Appointment(BaseModel):
-    day: str = None
-    time: str
-    name: str
-
 # --- HELPER FUNCTION ---
 def parse_smart_date(date_input):
-    """
-    Converts natural language (e.g., '18th of December') into a python datetime object.
-    Returns None if it fails.
-    """
     if not date_input:
-        return None
-        
-    print(f"DEBUG: Parsing date string -> '{date_input}'")
-    
-    # settings={'PREFER_DATES_FROM': 'future'} ensures that if you say "Dec 18" 
-    # and today is Dec 20, it assumes you mean NEXT year.
+        return None 
+    # specific settings to handle "tomorrow" or "18th" correctly
     dt = dateparser.parse(
-        date_input, 
+        str(date_input), 
         settings={'PREFER_DATES_FROM': 'future', 'DATE_ORDER': 'DMY'}
     )
     return dt
@@ -62,33 +38,41 @@ def parse_smart_date(date_input):
 
 @app.get("/")
 def home():
-    return {"status": "active", "integration": "Google Calendar"}
+    return {"status": "active"}
 
 @app.post("/check-availability")
-def check_availability(request: DateRequest):
-    # 1. robustly get the input string
-    raw_input = request.day or request.date
-    print(f"DEBUG: Received check-availability request: {raw_input}")
+async def check_availability(request: Request):
+    # 1. CAPTURE THE RAW JSON BODY
+    try:
+        body = await request.json()
+        print(f"DEBUG: FULL RAW BODY RECEIVED: {body}")
+    except Exception:
+        print("DEBUG: Could not parse JSON body")
+        return {"message": "Error reading request"}
+
+    # 2. LOOK FOR THE DATA IN COMMON FIELDS
+    # The AI might be calling it 'day', 'date', 'time', or 'argument'
+    raw_input = body.get("day") or body.get("date") or body.get("time") or body.get("when")
+
+    print(f"DEBUG: Extracted input string: {raw_input}")
 
     if not raw_input:
-        return {"message": "I didn't catch the day. Could you repeat which date you want to check?"}
+        # If we still can't find it, tell the AI to try again
+        return {"message": "I received your request, but the date parameter was missing. Please check the tool configuration."}
 
     try:
-        # 2. Parse the date
+        # 3. PARSE DATE
         date_obj = parse_smart_date(raw_input)
         
         if not date_obj:
-            return {"message": f"I'm sorry, I didn't quite understand the date '{raw_input}'. Please try saying the full date, like 'December 18th'."}
+            return {"message": f"I heard '{raw_input}', but I'm not sure which date that is. Could you please say the full date?"}
 
-        # 3. Format strings for Google Calendar
         formatted_date_str = date_obj.strftime("%Y-%m-%d")
-        print(f"DEBUG: Querying Google Calendar for: {formatted_date_str}")
         
-        # Define 9 AM to 6 PM IST
+        # 4. CHECK GOOGLE CALENDAR
         start_time = date_obj.replace(hour=9, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
         end_time = date_obj.replace(hour=18, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
 
-        # 4. Call Google API
         events_result = service.events().list(
             calendarId=CALENDAR_ID,
             timeMin=start_time,
@@ -99,17 +83,15 @@ def check_availability(request: DateRequest):
         
         events = events_result.get('items', [])
 
-        # 5. Build Response
         if not events:
             readable_date = date_obj.strftime("%A, %B %d")
             return {"message": f"Good news! The doctor is completely free on {readable_date} from 9 AM to 6 PM."}
         
         busy_times = []
         for event in events:
-            # Handle full day vs timed events
             start = event['start'].get('dateTime', event['start'].get('date'))
             if 'T' in start:
-                clean_time = start.split('T')[1][:5] # Extract HH:MM
+                clean_time = start.split('T')[1][:5]
                 busy_times.append(clean_time)
             
         return {
@@ -118,54 +100,50 @@ def check_availability(request: DateRequest):
 
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
-        # Return a polite error to the voice bot so it doesn't just go silent
-        return {"message": "I'm having a technical issue checking the calendar right now. Please try again in a moment."}
+        return {"message": "I'm having a technical issue checking the calendar."}
 
 @app.post("/book_appointment")
-def book_appointment(appt: Appointment):
-    print(f"DEBUG: Booking request for {appt.name} on {appt.day} at {appt.time}")
+async def book_appointment(request: Request):
+    # Debugging booking as well
+    body = await request.json()
+    print(f"DEBUG: BOOKING BODY: {body}")
     
+    # Extract fields manually since we are using raw Request
+    day = body.get("day") or body.get("date")
+    time = body.get("time")
+    name = body.get("name")
+
+    if not day or not time or not name:
+        return {"status": "error", "message": "Missing fields. I need day, time, and name."}
+
     try:
-        # 1. Parse date
-        date_obj = parse_smart_date(appt.day)
+        date_obj = parse_smart_date(day)
         if not date_obj:
-             return {"status": "error", "message": f"Invalid date: {appt.day}"}
+             return {"status": "error", "message": f"Invalid date: {day}"}
 
         date_str_clean = date_obj.strftime("%Y-%m-%d")
-
-        # 2. Construct ISO Timestamps
-        start_time_str = f"{date_str_clean}T{appt.time}:00"
+        start_time_str = f"{date_str_clean}T{time}:00"
         
-        # Verify valid time format
         try:
             appt_dt = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M:%S")
         except ValueError:
-             return {"status": "error", "message": f"Invalid time format: {appt.time}"}
+             return {"status": "error", "message": f"Invalid time format: {time}"}
 
         end_dt = appt_dt + timedelta(hours=1)
         
-        # 3. Create Event Body
         event = {
-            'summary': f'Dentist Appt: {appt.name}',
+            'summary': f'Dentist Appt: {name}',
             'location': 'Tanvi\'s KidCare Clinic',
             'description': 'Booked via AI Receptionist',
-            'start': {
-                'dateTime': appt_dt.isoformat(),
-                'timeZone': 'Asia/Kolkata',
-            },
-            'end': {
-                'dateTime': end_dt.isoformat(),
-                'timeZone': 'Asia/Kolkata',
-            },
+            'start': {'dateTime': appt_dt.isoformat(), 'timeZone': 'Asia/Kolkata'},
+            'end': {'dateTime': end_dt.isoformat(), 'timeZone': 'Asia/Kolkata'},
         }
 
-        # 4. Insert to Google
         event_result = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
         
         return {
             "status": "success", 
-            "message": f"Appointment confirmed for {appt.name} on {date_str_clean} at {appt.time}.",
-            "link": event_result.get('htmlLink')
+            "message": f"Appointment confirmed for {name} on {date_str_clean} at {time}.",
         }
         
     except Exception as e:
