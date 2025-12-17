@@ -1,4 +1,3 @@
-# backend/main.py
 from fastapi import FastAPI, Request
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -11,20 +10,29 @@ app = FastAPI()
 
 # --- CONFIGURATION ---
 SCOPES = ['https://www.googleapis.com/auth/calendar']
+# REPLACE THIS with your actual Google Calendar email if different
 CALENDAR_ID = 'shaanhem@gmail.com' 
+# Timezone offset for querying (IST is +05:30)
 TIMEZONE_OFFSET = "+05:30"
+# Timezone ID for event creation
+TIMEZONE_ID = 'Asia/Kolkata'
 
+# Setup Google Credentials
 CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON")
 if CREDENTIALS_JSON:
     creds_dict = json.loads(CREDENTIALS_JSON)
     creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 else:
+    # Fallback for local testing
     creds = service_account.Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
 
 service = build('calendar', 'v3', credentials=creds)
 
-# --- HELPER: VAPI EXTRACTOR ---
+# --- HELPER 1: VAPI DATA EXTRACTOR ---
 def get_vapi_data(body):
+    """
+    Extracts arguments and toolCallId from Vapi's complex JSON payload.
+    """
     try:
         if "message" in body and "toolCalls" in body["message"]:
             tool_call = body["message"]["toolCalls"][0]
@@ -40,8 +48,12 @@ def get_vapi_data(body):
         print(f"DEBUG: Extraction Error: {e}")
         return {}, None
 
-# --- HELPER: DATE PARSER (UPDATED) ---
+# --- HELPER 2: SMART DATE PARSER ---
 def parse_smart_date(date_input):
+    """
+    Tries to parse the date strictly first (YYYY-MM-DD), 
+    then falls back to smart parsing (e.g. 'next friday').
+    """
     if not date_input:
         return None
     
@@ -53,16 +65,18 @@ def parse_smart_date(date_input):
     except ValueError:
         pass
         
-    # 2. Fallback to smart parsing (for "next Tuesday", "tomorrow", etc.)
-    # We remove 'DATE_ORDER' here to let dateparser guess better if the strict parse failed
+    # 2. Fallback to smart parsing
     dt = dateparser.parse(
         date_str, 
         settings={'PREFER_DATES_FROM': 'future'} 
     )
     return dt
 
-# --- HELPER: FORMAT RESPONSE FOR VAPI ---
+# --- HELPER 3: FORMAT RESPONSE ---
 def format_response(result_text, tool_call_id):
+    """
+    Formats the JSON response exactly how Vapi expects it.
+    """
     print(f"DEBUG: Sending response -> {result_text}")
     if tool_call_id:
         return {
@@ -80,7 +94,7 @@ def format_response(result_text, tool_call_id):
 
 @app.get("/")
 def home():
-    return {"status": "active"}
+    return {"status": "active", "message": "Pediatric Clinic Backend Online"}
 
 @app.post("/check-availability")
 async def check_availability(request: Request):
@@ -88,7 +102,7 @@ async def check_availability(request: Request):
     args, tool_id = get_vapi_data(body)
     raw_input = args.get("day") or args.get("date")
     
-    print(f"DEBUG: Processing '{raw_input}' for Tool ID: {tool_id}")
+    print(f"DEBUG: Processing availability for '{raw_input}'")
 
     if not raw_input:
         return format_response("I didn't catch the date. Could you please repeat it?", tool_id)
@@ -100,6 +114,7 @@ async def check_availability(request: Request):
 
         formatted_date_str = date_obj.strftime("%Y-%m-%d")
         
+        # Check from 9 AM to 6 PM on that day
         start_time = date_obj.replace(hour=9, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
         end_time = date_obj.replace(hour=18, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
 
@@ -121,10 +136,11 @@ async def check_availability(request: Request):
         for event in events:
             start = event['start'].get('dateTime', event['start'].get('date'))
             if 'T' in start:
+                # Extract HH:MM from ISO string
                 clean_time = start.split('T')[1][:5]
                 busy_times.append(clean_time)
             
-        return format_response(f"On {formatted_date_str}, the doctor is busy at: {', '.join(busy_times)}. Any other time is free.", tool_id)
+        return format_response(f"On {formatted_date_str}, the doctor is busy at these times: {', '.join(busy_times)}. Any other time is free.", tool_id)
 
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
@@ -139,7 +155,7 @@ async def book_appointment(request: Request):
     time = args.get("time")
     name = args.get("name")
     
-    print(f"DEBUG: Booking '{name}' on '{day}' at '{time}' (Tool ID: {tool_id})")
+    print(f"DEBUG: Attempting booking for '{name}' on '{day}' at '{time}'")
 
     if not day or not time:
         return format_response("I need both a day and a time to book the appointment.", tool_id)
@@ -155,7 +171,7 @@ async def book_appointment(request: Request):
 
         date_str_clean = date_obj.strftime("%Y-%m-%d")
         
-        # 2. Parse Time & Combine
+        # 2. Parse Time & Create Datetime Objects
         start_time_str = f"{date_str_clean}T{time}:00"
         
         try:
@@ -163,14 +179,34 @@ async def book_appointment(request: Request):
         except ValueError:
              return format_response(f"Invalid time format: {time}. Please use HH:MM.", tool_id)
 
-        end_dt = appt_dt + timedelta(hours=1)
+        end_dt = appt_dt + timedelta(hours=1) # Appointments are 1 hour long
         
+        # --- COLLISION DETECTION START ---
+        # Query Google Calendar strictly for this time slot
+        check_start = appt_dt.isoformat() + TIMEZONE_OFFSET
+        check_end = end_dt.isoformat() + TIMEZONE_OFFSET
+        
+        conflict_result = service.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=check_start,
+            timeMax=check_end,
+            singleEvents=True
+        ).execute()
+        
+        conflicting_events = conflict_result.get('items', [])
+        
+        if conflicting_events:
+            # Found an overlapping event
+            return format_response(f"I'm sorry, {name}. It looks like {time} on {date_str_clean} is already booked. Could we try a different time?", tool_id)
+        # --- COLLISION DETECTION END ---
+        
+        # 3. If no conflicts, Create Event
         event = {
             'summary': f'Dentist Appt: {name}',
             'location': 'Tanvi\'s KidCare Clinic',
             'description': 'Booked via AI Receptionist',
-            'start': {'dateTime': appt_dt.isoformat(), 'timeZone': 'Asia/Kolkata'},
-            'end': {'dateTime': end_dt.isoformat(), 'timeZone': 'Asia/Kolkata'},
+            'start': {'dateTime': appt_dt.isoformat(), 'timeZone': TIMEZONE_ID},
+            'end': {'dateTime': end_dt.isoformat(), 'timeZone': TIMEZONE_ID},
         }
 
         service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
