@@ -3,413 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tanvi's KidCare | AI-Powered Pediatric Dentistry</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Lumi AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #818cf8;
-            --accent: #ec4899;
-            --success: #10b981;
-            --error: #ef4444;
-            --bg-dark: #0a0a0f;
-            --bg-surface: #1a1a24;
-            --text-white: #ffffff;
-            --text-muted: #94a3b8;
-            --border: #2d2d3a;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: var(--text-white);
-            background: var(--bg-dark);
-            line-height: 1.6;
-            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+            background: #000;
+            color: #fff;
             min-height: 100vh;
-            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
         }
 
-        /* --- Background Effects (Optimized) --- */
-        .bg-gradient {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
-            z-index: 0;
-        }
-
-        .grid-overlay {
+        /* Grid background */
+        .grid-bg {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background-image: 
-                linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
+                linear-gradient(rgba(0, 255, 157, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 157, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
             z-index: 0;
-            pointer-events: none;
         }
 
-        /* --- Navbar --- */
-        nav {
-            background: rgba(10, 10, 15, 0.85);
-            backdrop-filter: blur(15px);
-            border-bottom: 1px solid var(--border);
-            padding: 1rem 5%;
+        /* Scanline effect */
+        .scanline {
             position: fixed;
-            width: 100%;
             top: 0;
-            z-index: 100;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(0, 255, 157, 0.02) 50%
+            );
+            background-size: 100% 4px;
+            z-index: 0;
+            pointer-events: none;
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(50px); }
+        }
+
+        /* Accent glow */
+        .accent-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0, 255, 157, 0.15) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+            filter: blur(80px);
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 5%;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 255, 157, 0.1);
+            z-index: 100;
         }
 
-        .nav-logo {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: var(--text-white);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: #00ff9d;
+            text-transform: uppercase;
         }
 
-        .nav-logo-icon { font-size: 1.5rem; }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-
-        /* --- Main Container --- */
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 120px 5% 80px;
             position: relative;
             z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
         }
 
-        .hero-grid {
+        .main-content {
+            max-width: 900px;
+            width: 100%;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 4rem;
             align-items: center;
-            margin-bottom: 4rem;
         }
 
-        /* --- Typography --- */
-        .hero-content h1 {
+        .text-section h1 {
             font-size: 3.5rem;
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1.1;
             margin-bottom: 1.5rem;
             letter-spacing: -0.02em;
         }
 
-        .gradient-text {
-            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero-content p {
-            font-size: 1.15rem;
-            color: var(--text-muted);
+        .text-section p {
+            font-size: 1.1rem;
+            color: #888;
+            line-height: 1.6;
             margin-bottom: 2rem;
-            max-width: 90%;
         }
 
-        /* --- Stats --- */
-        .stats-row {
+        .accent { color: #00ff9d; }
+
+        .stats {
             display: flex;
-            gap: 3rem;
-            margin-top: 2rem;
+            gap: 2rem;
         }
 
-        .stat-number {
-            font-size: 2rem;
+        .stat-box {
+            border-left: 2px solid #00ff9d;
+            padding-left: 1rem;
+        }
+
+        .stat-num {
+            font-size: 1.8rem;
             font-weight: 700;
-            color: var(--text-white);
+            color: #00ff9d;
             display: block;
         }
 
         .stat-label {
-            color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        /* --- AI Interface Card --- */
-        .ai-interface {
-            background: rgba(26, 26, 36, 0.6);
-            backdrop-filter: blur(20px);
-            padding: 2.5rem;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border);
-            text-align: center;
+        .terminal {
+            background: rgba(0, 20, 15, 0.8);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 157, 0.1),
+                inset 0 0 30px rgba(0, 255, 157, 0.02);
         }
 
-        .status-container {
+        .terminal-header {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(0, 255, 157, 0.1);
         }
 
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #475569;
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
+            background: #333;
         }
 
-        .status-dot.active {
-            background-color: var(--success);
-            box-shadow: 0 0 10px var(--success);
+        .terminal-dot.active {
+            background: #00ff9d;
+            box-shadow: 0 0 10px #00ff9d;
         }
 
-        /* Visualizer */
-        .visualizer-wrapper {
-            height: 60px;
+        .status-line {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #00ff9d;
+            margin-bottom: 1.5rem;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: #00ff9d;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .visualizer {
+            height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 2rem;
+            gap: 4px;
+            margin-bottom: 1.5rem;
             opacity: 0.3;
             transition: opacity 0.3s;
         }
-        .visualizer-wrapper.active { opacity: 1; }
 
-        .visualizer { display: flex; gap: 6px; align-items: center; height: 100%; }
-        
-        .bar {
-            width: 6px;
-            height: 20px;
-            background: var(--primary);
-            border-radius: 4px;
-            transition: height 0.1s ease;
-        }
-        
-        /* Fake Animation */
-        .visualizer-wrapper.active .bar { animation: pulseBar 0.5s infinite alternate; }
-        .bar:nth-child(2) { animation-delay: 0.1s; }
-        .bar:nth-child(3) { animation-delay: 0.2s; }
-        
-        @keyframes pulseBar {
-            0% { height: 15px; }
-            100% { height: 40px; }
+        .visualizer.active { opacity: 1; }
+
+        .vbar {
+            width: 3px;
+            height: 10px;
+            background: #00ff9d;
+            border-radius: 2px;
+            transition: height 0.1s;
         }
 
-        /* --- Call Button --- */
+        .visualizer.active .vbar {
+            animation: bounce 0.6s infinite ease-in-out;
+        }
+
+        .vbar:nth-child(2) { animation-delay: 0.1s; }
+        .vbar:nth-child(3) { animation-delay: 0.2s; }
+        .vbar:nth-child(4) { animation-delay: 0.3s; }
+        .vbar:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 100% { height: 10px; }
+            50% { height: 35px; }
+        }
+
         .call-btn {
             width: 100%;
-            padding: 1.25rem;
-            border-radius: 16px;
-            border: none;
-            font-size: 1.1rem;
-            font-weight: 700;
+            padding: 1rem;
+            border: 2px solid #00ff9d;
+            background: transparent;
+            color: #00ff9d;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
-            transition: transform 0.1s;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+            font-family: 'Courier New', monospace;
         }
 
-        .call-btn:active { transform: scale(0.98); }
-        
+        .call-btn:hover {
+            background: rgba(0, 255, 157, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+        }
+
         .call-btn.active {
-            background: linear-gradient(135deg, var(--error) 0%, #b91c1c 100%);
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+            border-color: #ff4444;
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
         }
 
-        .error-message {
+        .timer {
+            text-align: center;
             margin-top: 1rem;
-            color: #fca5a5;
+            font-family: 'Courier New', monospace;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .error {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            border-radius: 4px;
+            color: #ff6b6b;
             font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
             display: none;
         }
 
-        /* --- Features --- */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .feature-card {
-            background: rgba(255,255,255,0.03);
-            padding: 1.5rem;
-            border-radius: 16px;
-            border: 1px solid var(--border);
-        }
-
-        .feature-card h3 { margin: 10px 0 5px; color: var(--text-white); }
-        .feature-card p { font-size: 0.9rem; color: var(--text-muted); }
-
-        /* --- 📱 MOBILE OPTIMIZATIONS 📱 --- */
         @media (max-width: 768px) {
-            .container {
-                padding: 90px 20px 40px; /* Reduced top padding */
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
             }
 
-            .nav-links { display: none; } /* Hide links on mobile */
-            
-            .hero-grid {
-                grid-template-columns: 1fr; /* Stack vertically */
-                gap: 2.5rem;
-            }
-
-            .hero-content {
+            .text-section {
                 text-align: center;
             }
 
-            .hero-content h1 {
-                font-size: 2.5rem; /* Smaller headline */
+            .text-section h1 {
+                font-size: 2.5rem;
             }
 
-            .hero-content p {
-                font-size: 1rem;
-                margin: 0 auto 1.5rem;
-            }
-
-            .stats-row {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr); /* Keep stats in one row if possible, or grid */
-                gap: 1rem;
+            .stats {
                 justify-content: center;
-                margin-top: 1.5rem;
             }
-            
-            .stat-number { font-size: 1.5rem; }
-            .stat-label { font-size: 0.75rem; }
 
-            .ai-interface {
-                padding: 1.5rem; /* Less padding in card */
-                margin-top: 1rem;
-            }
-            
-            .visualizer-wrapper { height: 40px; margin-bottom: 1.5rem; }
-
-            /* Make button stick to bottom on mobile for easy access? 
-               Let's just make it really prominent */
-            .call-btn {
-                padding: 1rem;
-                font-size: 1rem;
+            .terminal {
+                padding: 1.5rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="bg-gradient"></div>
-    <div class="grid-overlay"></div>
+    <div class="grid-bg"></div>
+    <div class="scanline"></div>
+    <div class="accent-glow"></div>
 
-    <nav id="navbar">
-        <div class="nav-logo">
-            <span class="nav-logo-icon">🦷</span>
-            <span>Tanvi's KidCare</span>
-        </div>
-        <div class="nav-links">
-            <span>Services</span>
-            <span>Doctors</span>
-            <span>Insurance</span>
-        </div>
+    <nav>
+        <div class="logo">LUMI</div>
     </nav>
 
     <div class="container">
-        <div class="hero-grid">
-            <div class="hero-content">
-                <h1>Smart Care, <br><span class="gradient-text">Available 24/7</span></h1>
-                <p>Experience the future of appointments. Talk to our AI receptionist instantly to book your child's visit.</p>
-
-                <div class="stats-row">
-                    <div class="stat-item">
-                        <span class="stat-number">2k+</span>
-                        <span class="stat-label">Patients</span>
+        <div class="main-content">
+            <div class="text-section">
+                <h1>Voice AI for the <span class="accent">real world</span></h1>
+                <p>No scripts. No menus. Just natural conversations that actually work. Built for businesses that need reliability.</p>
+                
+                <div class="stats">
+                    <div class="stat-box">
+                        <span class="stat-num">&lt;100ms</span>
+                        <span class="stat-label">Latency</span>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-number">4.9★</span>
-                        <span class="stat-label">Rating</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">24/7</span>
-                        <span class="stat-label">Online</span>
+                    <div class="stat-box">
+                        <span class="stat-num">24/7</span>
+                        <span class="stat-label">Uptime</span>
                     </div>
                 </div>
             </div>
 
-            <div class="ai-interface">
-                <div class="status-container">
-                    <div class="status-badge">
-                        <div class="status-dot" id="status-dot"></div>
-                        <span id="status-text">Ready to Connect</span>
-                    </div>
-                    <span style="color:var(--text-muted); font-size:0.9rem;" id="timer"></span>
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dot"></div>
+                    <div class="terminal-dot"></div>
+                    <div class="terminal-dot" id="status-dot"></div>
                 </div>
 
-                <div class="visualizer-wrapper" id="visualizer-wrapper">
-                    <div class="visualizer">
-                        <div class="bar"></div>
-                        <div class="bar"></div>
-                        <div class="bar"></div>
-                        <div class="bar"></div>
-                        <div class="bar"></div>
-                    </div>
+                <div class="status-line">
+                    <span>$</span>
+                    <span id="status-text">system.ready</span>
+                    <span class="cursor"></span>
                 </div>
 
-                <h3 style="margin-bottom: 1rem;">Need an Appointment?</h3>
-                <p style="color:var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem;">
-                    Tap to speak. We can check availability and book slots instantly.
-                </p>
+                <div class="visualizer" id="visualizer">
+                    <div class="vbar"></div>
+                    <div class="vbar"></div>
+                    <div class="vbar"></div>
+                    <div class="vbar"></div>
+                    <div class="vbar"></div>
+                </div>
 
-                <button class="call-btn" id="call-btn">
-                    <span>📞 Start Voice Call</span>
-                </button>
-
-                <div class="error-message" id="error-msg"></div>
-            </div>
-        </div>
-
-        <div class="features-grid">
-            <div class="feature-card">
-                <h3>⚡ Instant</h3>
-                <p>No hold times. Book in seconds.</p>
-            </div>
-            <div class="feature-card">
-                <h3>🔒 Secure</h3>
-                <p>Your data is encrypted & safe.</p>
-            </div>
-            <div class="feature-card">
-                <h3>🧸 Gentle</h3>
-                <p>Designed for pediatric care.</p>
+                <button class="call-btn" id="call-btn">[ INITIATE CALL ]</button>
+                
+                <div class="timer" id="timer"></div>
+                <div class="error" id="error"></div>
             </div>
         </div>
     </div>
@@ -417,78 +366,75 @@
     <script type="module">
         import Vapi from 'https://esm.sh/@vapi-ai/web';
 
-        // --- CONFIGURATION ---
-        // ⚠️ PASTE YOUR PUBLIC KEY HERE ⚠️
-        const apiKey = "c6e9b03f-79a3-479b-af13-7ddc002ebc09"; 
-        const assistantId = "657109e3-0f8e-4b61-8827-b39e5a5febf7";
-        // ---------------------
+        const API_KEY = "c6e9b03f-79a3-479b-af13-7ddc002ebc09";
+        const ASSISTANT_ID = "657109e3-0f8e-4b61-8827-b39e5a5febf7";
 
-        const vapi = new Vapi(apiKey);
-        const callBtn = document.getElementById("call-btn");
+        const vapi = new Vapi(API_KEY);
+        const btn = document.getElementById("call-btn");
         const statusText = document.getElementById("status-text");
         const statusDot = document.getElementById("status-dot");
-        const visualizerWrapper = document.getElementById("visualizer-wrapper");
-        const errorMsg = document.getElementById("error-msg");
+        const visualizer = document.getElementById("visualizer");
         const timer = document.getElementById("timer");
+        const error = document.getElementById("error");
 
-        let callStartTime = null;
+        let startTime = null;
         let timerInterval = null;
 
-        function setStatus(state) {
-            errorMsg.style.display = 'none';
+        function updateStatus(state) {
+            error.style.display = 'none';
+            
             if (state === "idle") {
-                statusText.textContent = "Ready";
+                statusText.textContent = "system.ready";
                 statusDot.classList.remove("active");
-                visualizerWrapper.classList.remove("active");
-                callBtn.classList.remove("active");
-                callBtn.innerHTML = "<span>📞 Start Voice Call</span>";
+                visualizer.classList.remove("active");
+                btn.classList.remove("active");
+                btn.textContent = "[ INITIATE CALL ]";
                 timer.textContent = "";
-                if (timerInterval) clearInterval(timerInterval);
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
             } else if (state === "connecting") {
-                statusText.textContent = "Connecting...";
-                callBtn.innerHTML = "<span>⏳ Connecting...</span>";
+                statusText.textContent = "connecting...";
+                btn.textContent = "[ CONNECTING... ]";
             } else if (state === "active") {
-                statusText.textContent = "Live";
+                statusText.textContent = "call.active";
                 statusDot.classList.add("active");
-                visualizerWrapper.classList.add("active");
-                callBtn.classList.add("active");
-                callBtn.innerHTML = "<span>🛑 End Call</span>";
-                callStartTime = Date.now();
-                startTimer();
+                visualizer.classList.add("active");
+                btn.classList.add("active");
+                btn.textContent = "[ TERMINATE ]";
+                startTime = Date.now();
+                timerInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const mins = Math.floor(elapsed / 60);
+                    const secs = elapsed % 60;
+                    timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }, 1000);
             }
         }
 
-        function startTimer() {
-            timerInterval = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
-                const mins = Math.floor(elapsed / 60);
-                const secs = elapsed % 60;
-                timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-            }, 1000);
-        }
-
-        callBtn.addEventListener("click", async () => {
-            if (callBtn.classList.contains("active")) {
+        btn.addEventListener("click", async () => {
+            if (btn.classList.contains("active")) {
                 vapi.stop();
-                setStatus("idle");
+                updateStatus("idle");
             } else {
-                setStatus("connecting");
+                updateStatus("connecting");
                 try {
-                    await vapi.start(assistantId);
+                    await vapi.start(ASSISTANT_ID);
                 } catch (e) {
-                    errorMsg.textContent = "Error: " + e.message;
-                    errorMsg.style.display = "block";
-                    setStatus("idle");
+                    error.textContent = "ERROR: " + (e.message || "Connection failed");
+                    error.style.display = "block";
+                    updateStatus("idle");
                 }
             }
         });
 
-        vapi.on("call-start", () => setStatus("active"));
-        vapi.on("call-end", () => setStatus("idle"));
+        vapi.on("call-start", () => updateStatus("active"));
+        vapi.on("call-end", () => updateStatus("idle"));
         vapi.on("error", (e) => {
-            errorMsg.textContent = e.error?.message || e.message;
-            errorMsg.style.display = "block";
-            setStatus("idle");
+            error.textContent = "ERROR: " + (e.error?.message || e.message || "Unknown error");
+            error.style.display = "block";
+            updateStatus("idle");
         });
     </script>
 </body>

@@ -48,28 +48,39 @@ def get_vapi_data(body):
         print(f"DEBUG: Extraction Error: {e}")
         return {}, None
 
-# --- HELPER 2: SMART DATE PARSER ---
+# --- HELPER 2: SMART DATE PARSER (UPDATED) ---
 def parse_smart_date(date_input):
-    """
-    Tries to parse the date strictly first (YYYY-MM-DD), 
-    then falls back to smart parsing (e.g. 'next friday').
-    """
     if not date_input:
         return None
     
     date_str = str(date_input).strip()
     
-    # 1. Try standard ISO format (YYYY-MM-DD) - This is what Vapi sends now
+    # 1. Try standard ISO format (YYYY-MM-DD)
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d")
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        pass
+        # 2. Fallback to smart parsing
+        dt = dateparser.parse(
+            date_str, 
+            settings={'PREFER_DATES_FROM': 'future'} 
+        )
+    
+    if not dt:
+        return None
+
+    # --- THE "TIME MACHINE" FIX ---
+    # If the AI sends a year that is in the past (e.g., 2023), fix it.
+    now = datetime.now()
+    
+    # If the year is older than today's year, snap it to current year
+    if dt.year < now.year:
+        dt = dt.replace(year=now.year)
+    
+    # If the resulting date is STILL in the past (e.g. today is Dec, user said Jan), 
+    # move it to next year.
+    if dt.date() < now.date():
+        dt = dt.replace(year=now.year + 1)
         
-    # 2. Fallback to smart parsing
-    dt = dateparser.parse(
-        date_str, 
-        settings={'PREFER_DATES_FROM': 'future'} 
-    )
     return dt
 
 # --- HELPER 3: FORMAT RESPONSE ---
