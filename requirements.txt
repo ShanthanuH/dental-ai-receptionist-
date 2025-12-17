@@ -3,3 +3,4 @@ uvicorn==0.27.0
 pydantic==2.6.0
 google-auth
 google-api-python-client
+dateparser
