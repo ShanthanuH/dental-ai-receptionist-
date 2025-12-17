@@ -3,8 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import datetime
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta # Cleaned up imports
 import os
 import json
 
@@ -13,31 +12,64 @@ app = FastAPI()
 # --- CONFIGURATION ---
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-# Load credentials from Environment Variable (Best for Render)
-# OR from a local file (Best for local testing)
+# Load credentials
 CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON")
 
 if CREDENTIALS_JSON:
-    # If on Render, load from the environment variable string
     creds_dict = json.loads(CREDENTIALS_JSON)
     creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 else:
-    # If local, load from the file you downloaded
     creds = service_account.Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
 
 service = build('calendar', 'v3', credentials=creds)
 
 # --- DATA MODELS ---
-
-# 1. Model for checking availability (The AI sends just the day)
 class DateRequest(BaseModel):
-    day: str  # Format: "2025-12-17"
+    day: str  # Can now handle "Monday", "Tomorrow", "2025-12-17"
 
-# 2. Model for booking (The AI sends day, time, and name)
 class Appointment(BaseModel):
-    day: str  # Format: "2024-05-20"
-    time: str # Format: "10:00"
+    day: str
+    time: str
     name: str
+
+# --- HELPER FUNCTION: THE FIX ---
+def get_date_object(date_str):
+    """
+    Converts 'Monday', 'tomorrow', or '2025-12-17' into a datetime object.
+    """
+    date_str = date_str.strip().lower()
+    today = datetime.now()
+    
+    # 1. Try Standard ISO Format (YYYY-MM-DD)
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        pass # Not ISO, try natural language
+
+    # 2. Handle "today" and "tomorrow"
+    if date_str == "today":
+        return today
+    if date_str == "tomorrow":
+        return today + timedelta(days=1)
+
+    # 3. Handle Weekdays (e.g., "monday", "friday")
+    weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    if date_str in weekdays:
+        target_idx = weekdays.index(date_str)
+        current_idx = today.weekday() # Monday is 0, Sunday is 6
+        
+        # Calculate difference
+        days_ahead = target_idx - current_idx
+        
+        # If the day has passed or is today, assume they mean NEXT week's occurrence
+        # (Change to just < 0 if you want "Monday" on a Monday to mean TODAY)
+        if days_ahead <= 0: 
+            days_ahead += 7
+            
+        return today + timedelta(days=days_ahead)
+
+    # If all else fails
+    raise ValueError(f"Could not understand date: {date_str}")
 
 # --- ENDPOINTS ---
 
@@ -45,22 +77,27 @@ class Appointment(BaseModel):
 def home():
     return {"status": "active", "integration": "Google Calendar"}
 
-# UPDATED: Changed to POST and dashed-url to match the AI's request
 @app.post("/check-availability")
 def check_availability(request: DateRequest):
-    day = request.day
-    print(f"Checking availability for: {day}") # Log for debugging
+    raw_input = request.day
+    print(f"Checking availability for: {raw_input}")
 
     try:
-        # 1. Parse the requested date (Expected format: YYYY-MM-DD)
-        date_obj = datetime.strptime(day, "%Y-%m-%d")
+        # --- FIX: Use the helper function instead of direct strptime ---
+        date_obj = get_date_object(raw_input)
         
-        # 2. Define the "Work Day" (9 AM to 6 PM IST)
-        # RFC3339 format with +05:30 offset
-        start_time = date_obj.replace(hour=9, minute=0).isoformat() + "+05:30"
-        end_time = date_obj.replace(hour=18, minute=0).isoformat() + "+05:30"
+        # Convert back to string for the response message later
+        formatted_date = date_obj.strftime("%Y-%m-%d") 
+        
+        # Define the "Work Day" (9 AM to 6 PM IST)
+        start_time = date_obj.replace(hour=9, minute=0, second=0).isoformat()
+        end_time = date_obj.replace(hour=18, minute=0, second=0).isoformat()
+        
+        # Add Timezone manually if needed, or rely on 'Z' if your server is UTC
+        # For India (IST), we append offset. 
+        start_time += "+05:30"
+        end_time += "+05:30"
 
-        # 3. Ask Google: "Give me all events between 9 AM and 6 PM"
         CALENDAR_ID = 'shaanhem@gmail.com' 
         
         events_result = service.events().list(
@@ -73,59 +110,57 @@ def check_availability(request: DateRequest):
         
         events = events_result.get('items', [])
 
-        # 4. Formulate the Answer
         if not events:
-            return {"message": f"Good news! The doctor is completely free on {day} from 9 AM to 6 PM."}
+            return {"message": f"Good news! The doctor is completely free on {formatted_date} (that's {raw_input}) from 9 AM to 6 PM."}
         
         busy_times = []
         for event in events:
-            # Get the start time
             start = event['start'].get('dateTime', event['start'].get('date'))
-            # Clean it up to just show HH:MM (e.g., "14:00")
             if 'T' in start:
                 clean_time = start.split('T')[1][:5]
                 busy_times.append(clean_time)
             
         return {
-            "message": f"On {day}, the doctor is busy at these times: {', '.join(busy_times)}. Any other time is free."
+            "message": f"On {formatted_date}, the doctor is busy at: {', '.join(busy_times)}. Any other time is free."
         }
 
     except Exception as e:
         print(f"Error checking availability: {e}")
-        return {"message": "I'm having trouble checking the schedule specifically, but you can try proposing a time."}
+        return {"message": f"I couldn't quite understand '{raw_input}'. Could you try giving me the date, like 'January 25th' or 'tomorrow'?"}
 
 @app.post("/book_appointment")
 def book_appointment(appt: Appointment):
     try:
-        # 1. Parse the date and time
-        # We expect the AI to send: day="2023-12-25", time="14:00"
-        start_time_str = f"{appt.day}T{appt.time}:00"
-        # Calculate end time (1 hour later)
+        # Use the same helper here just in case they send "Monday" to book
+        date_obj = get_date_object(appt.day)
+        date_str_clean = date_obj.strftime("%Y-%m-%d")
+
+        start_time_str = f"{date_str_clean}T{appt.time}:00"
+        
         appt_dt = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M:%S")
         end_dt = appt_dt + timedelta(hours=1)
-        end_time_str = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
         
-        # 2. Create the Event Object
+        # Format for Google Calendar
+        # Note: Ideally, handle timezone carefully here. Assuming input is local.
         event = {
             'summary': f'Dentist Appt: {appt.name}',
             'location': 'Tanvi\'s KidCare Clinic',
             'description': 'Booked via AI Receptionist',
             'start': {
-                'dateTime': start_time_str,
+                'dateTime': appt_dt.isoformat(),
                 'timeZone': 'Asia/Kolkata',
             },
             'end': {
-                'dateTime': end_time_str,
+                'dateTime': end_dt.isoformat(),
                 'timeZone': 'Asia/Kolkata',
             },
         }
 
-        # 3. Insert into Google Calendar
         event_result = service.events().insert(calendarId='shaanhem@gmail.com', body=event).execute()
         
         return {
             "status": "success", 
-            "message": f"Booked for {appt.name} on {appt.day} at {appt.time}",
+            "message": f"Booked for {appt.name} on {date_str_clean} at {appt.time}",
             "link": event_result.get('htmlLink')
         }
         
