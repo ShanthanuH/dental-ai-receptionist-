@@ -25,10 +25,6 @@ service = build('calendar', 'v3', credentials=creds)
 
 # --- HELPER: VAPI EXTRACTOR ---
 def get_vapi_data(body):
-    """
-    Extracts both the ARGUMENTS and the TOOL CALL ID.
-    Returns: (args_dict, tool_call_id_string)
-    """
     try:
         if "message" in body and "toolCalls" in body["message"]:
             tool_call = body["message"]["toolCalls"][0]
@@ -44,24 +40,30 @@ def get_vapi_data(body):
         print(f"DEBUG: Extraction Error: {e}")
         return {}, None
 
-# --- HELPER: DATE PARSER ---
+# --- HELPER: DATE PARSER (UPDATED) ---
 def parse_smart_date(date_input):
     if not date_input:
-        return None 
+        return None
+    
+    date_str = str(date_input).strip()
+    
+    # 1. Try standard ISO format (YYYY-MM-DD) - This is what Vapi sends now
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        pass
+        
+    # 2. Fallback to smart parsing (for "next Tuesday", "tomorrow", etc.)
+    # We remove 'DATE_ORDER' here to let dateparser guess better if the strict parse failed
     dt = dateparser.parse(
-        str(date_input), 
-        settings={'PREFER_DATES_FROM': 'future', 'DATE_ORDER': 'DMY'}
+        date_str, 
+        settings={'PREFER_DATES_FROM': 'future'} 
     )
     return dt
 
 # --- HELPER: FORMAT RESPONSE FOR VAPI ---
 def format_response(result_text, tool_call_id):
-    """
-    If we have a tool_call_id, return the specific Vapi structure.
-    Otherwise, return a simple JSON (for testing).
-    """
     print(f"DEBUG: Sending response -> {result_text}")
-    
     if tool_call_id:
         return {
             "results": [
@@ -72,7 +74,6 @@ def format_response(result_text, tool_call_id):
             ]
         }
     else:
-        # Fallback for simple POSTMAN tests
         return {"result": result_text}
 
 # --- ENDPOINTS ---
@@ -84,8 +85,6 @@ def home():
 @app.post("/check-availability")
 async def check_availability(request: Request):
     body = await request.json()
-    
-    # 1. Extract Args & ID
     args, tool_id = get_vapi_data(body)
     raw_input = args.get("day") or args.get("date")
     
@@ -95,14 +94,12 @@ async def check_availability(request: Request):
         return format_response("I didn't catch the date. Could you please repeat it?", tool_id)
 
     try:
-        # 2. Parse Date
         date_obj = parse_smart_date(raw_input)
         if not date_obj:
             return format_response(f"I'm not sure which date '{raw_input}' is. Please say the full date.", tool_id)
 
         formatted_date_str = date_obj.strftime("%Y-%m-%d")
         
-        # 3. Check Google Calendar
         start_time = date_obj.replace(hour=9, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
         end_time = date_obj.replace(hour=18, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
 
@@ -136,8 +133,6 @@ async def check_availability(request: Request):
 @app.post("/book_appointment")
 async def book_appointment(request: Request):
     body = await request.json()
-    
-    # 1. Extract Args & ID
     args, tool_id = get_vapi_data(body)
     
     day = args.get("day") or args.get("date")
@@ -153,11 +148,14 @@ async def book_appointment(request: Request):
          return format_response("I just need your name to finalize the booking.", tool_id)
 
     try:
+        # 1. Parse Date
         date_obj = parse_smart_date(day)
         if not date_obj:
              return format_response(f"Invalid date: {day}", tool_id)
 
         date_str_clean = date_obj.strftime("%Y-%m-%d")
+        
+        # 2. Parse Time & Combine
         start_time_str = f"{date_str_clean}T{time}:00"
         
         try:
