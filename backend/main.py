@@ -8,16 +8,13 @@ import dateparser
 
 app = FastAPI()
 
-# --- CONFIGURATION ---
+#  CONFIG
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-# REPLACE THIS with your actual Google Calendar email if different
 CALENDAR_ID = 'shaanhem@gmail.com' 
-# Timezone offset for querying (IST is +05:30)
 TIMEZONE_OFFSET = "+05:30"
-# Timezone ID for event creation
 TIMEZONE_ID = 'Asia/Kolkata'
 
-# Setup Google Credentials
+# Google Cred
 CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON")
 if CREDENTIALS_JSON:
     creds_dict = json.loads(CREDENTIALS_JSON)
@@ -28,7 +25,7 @@ else:
 
 service = build('calendar', 'v3', credentials=creds)
 
-# --- HELPER 1: VAPI DATA EXTRACTOR ---
+# HELPER 1: VAPI DATA EXTRACTOR 
 def get_vapi_data(body):
     """
     Extracts arguments and toolCallId from Vapi's complex JSON payload.
@@ -48,7 +45,7 @@ def get_vapi_data(body):
         print(f"DEBUG: Extraction Error: {e}")
         return {}, None
 
-# --- HELPER 2: SMART DATE PARSER (UPDATED) ---
+#  HELPER 2: SMART DATE PARSER (UPDATED)
 def parse_smart_date(date_input):
     if not date_input:
         return None
@@ -68,7 +65,7 @@ def parse_smart_date(date_input):
     if not dt:
         return None
 
-    # --- THE "TIME MACHINE" FIX ---
+    # THE "TIME MACHINE" FIX 
     # If the AI sends a year that is in the past (e.g., 2023), fix it.
     now = datetime.now()
     
@@ -76,14 +73,14 @@ def parse_smart_date(date_input):
     if dt.year < now.year:
         dt = dt.replace(year=now.year)
     
-    # If the resulting date is STILL in the past (e.g. today is Dec, user said Jan), 
+    # If the resulting date is STILL in the past , 
     # move it to next year.
     if dt.date() < now.date():
         dt = dt.replace(year=now.year + 1)
         
     return dt
 
-# --- HELPER 3: FORMAT RESPONSE ---
+# HELPER 3: FORMAT RESPONSE 
 def format_response(result_text, tool_call_id):
     """
     Formats the JSON response exactly how Vapi expects it.
@@ -101,7 +98,7 @@ def format_response(result_text, tool_call_id):
     else:
         return {"result": result_text}
 
-# --- ENDPOINTS ---
+#  ENDPOINTS
 
 @app.get("/")
 def home():
@@ -175,14 +172,14 @@ async def book_appointment(request: Request):
          return format_response("I just need your name to finalize the booking.", tool_id)
 
     try:
-        # 1. Parse Date
+        # Parse Date
         date_obj = parse_smart_date(day)
         if not date_obj:
              return format_response(f"Invalid date: {day}", tool_id)
 
         date_str_clean = date_obj.strftime("%Y-%m-%d")
         
-        # 2. Parse Time & Create Datetime Objects
+        # Parse Time & Create Datetime Objects
         start_time_str = f"{date_str_clean}T{time}:00"
         
         try:
@@ -192,7 +189,7 @@ async def book_appointment(request: Request):
 
         end_dt = appt_dt + timedelta(hours=1) # Appointments are 1 hour long
         
-        # --- COLLISION DETECTION START ---
+        # COLLISION DETECTION START 
         # Query Google Calendar strictly for this time slot
         check_start = appt_dt.isoformat() + TIMEZONE_OFFSET
         check_end = end_dt.isoformat() + TIMEZONE_OFFSET
@@ -207,11 +204,11 @@ async def book_appointment(request: Request):
         conflicting_events = conflict_result.get('items', [])
         
         if conflicting_events:
-            # Found an overlapping event
+            # For an overlapping event
             return format_response(f"I'm sorry, {name}. It looks like {time} on {date_str_clean} is already booked. Could we try a different time?", tool_id)
-        # --- COLLISION DETECTION END ---
+        #  COLLISION DETECTION END 
         
-        # 3. If no conflicts, Create Event
+        # If no conflicts, Create Event
         event = {
             'summary': f'Dentist Appt: {name}',
             'location': 'Tanvi\'s KidCare Clinic',
