@@ -2,5 +2,7 @@ fastapi==0.109.0
 uvicorn==0.27.0
 pydantic==2.6.0
 google-auth
+google-auth-oauthlib
+google-auth-httplib2
 google-api-python-client
 dateparser
