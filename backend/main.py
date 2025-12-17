@@ -11,7 +11,7 @@ app = FastAPI()
 
 # --- CONFIGURATION ---
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-CALENDAR_ID = 'shaanhem@gmail.com' # Your calendar email
+CALENDAR_ID = 'shaanhem@gmail.com' 
 TIMEZONE_OFFSET = "+05:30"
 
 CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON")
@@ -23,28 +23,26 @@ else:
 
 service = build('calendar', 'v3', credentials=creds)
 
-# --- HELPER: VAPI ARGUMENT EXTRACTOR ---
-def get_args_from_vapi(body):
+# --- HELPER: VAPI EXTRACTOR ---
+def get_vapi_data(body):
     """
-    Extracts arguments from the deep Vapi JSON structure.
-    Returns a dictionary of arguments (e.g., {'day': 'Monday'}).
+    Extracts both the ARGUMENTS and the TOOL CALL ID.
+    Returns: (args_dict, tool_call_id_string)
     """
     try:
-        # 1. Check if it's a Vapi Tool Call
         if "message" in body and "toolCalls" in body["message"]:
             tool_call = body["message"]["toolCalls"][0]
+            tool_id = tool_call["id"]
             args = tool_call["function"]["arguments"]
             
-            # Vapi sometimes sends args as a Dict, sometimes as a JSON String
             if isinstance(args, str):
-                return json.loads(args)
-            return args
+                args = json.loads(args)
+            return args, tool_id
             
-        # 2. Fallback for direct testing (Postman/Curl)
-        return body
+        return body, None
     except Exception as e:
         print(f"DEBUG: Extraction Error: {e}")
-        return {}
+        return {}, None
 
 # --- HELPER: DATE PARSER ---
 def parse_smart_date(date_input):
@@ -56,6 +54,27 @@ def parse_smart_date(date_input):
     )
     return dt
 
+# --- HELPER: FORMAT RESPONSE FOR VAPI ---
+def format_response(result_text, tool_call_id):
+    """
+    If we have a tool_call_id, return the specific Vapi structure.
+    Otherwise, return a simple JSON (for testing).
+    """
+    print(f"DEBUG: Sending response -> {result_text}")
+    
+    if tool_call_id:
+        return {
+            "results": [
+                {
+                    "toolCallId": tool_call_id,
+                    "result": result_text
+                }
+            ]
+        }
+    else:
+        # Fallback for simple POSTMAN tests
+        return {"result": result_text}
+
 # --- ENDPOINTS ---
 
 @app.get("/")
@@ -64,28 +83,26 @@ def home():
 
 @app.post("/check-availability")
 async def check_availability(request: Request):
-    # 1. Get the Raw JSON
     body = await request.json()
-    print(f"DEBUG: Body received") # Keeping logs cleaner now
     
-    # 2. Extract Arguments using new helper
-    args = get_args_from_vapi(body)
+    # 1. Extract Args & ID
+    args, tool_id = get_vapi_data(body)
     raw_input = args.get("day") or args.get("date")
     
-    print(f"DEBUG: FINAL EXTRACTED DAY: '{raw_input}'")
+    print(f"DEBUG: Processing '{raw_input}' for Tool ID: {tool_id}")
 
     if not raw_input:
-        return {"result": "I didn't catch the date. Could you please repeat it?"}
+        return format_response("I didn't catch the date. Could you please repeat it?", tool_id)
 
     try:
-        # 3. Parse Date
+        # 2. Parse Date
         date_obj = parse_smart_date(raw_input)
         if not date_obj:
-            return {"result": f"I'm not sure which date '{raw_input}' is. Please say the full date."}
+            return format_response(f"I'm not sure which date '{raw_input}' is. Please say the full date.", tool_id)
 
         formatted_date_str = date_obj.strftime("%Y-%m-%d")
         
-        # 4. Check Google Calendar
+        # 3. Check Google Calendar
         start_time = date_obj.replace(hour=9, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
         end_time = date_obj.replace(hour=18, minute=0, second=0).isoformat() + TIMEZONE_OFFSET
 
@@ -101,8 +118,7 @@ async def check_availability(request: Request):
 
         if not events:
             readable_date = date_obj.strftime("%A, %B %d")
-            # Vapi expects a "result" field often, but "message" works too.
-            return {"result": f"Good news! The doctor is completely free on {readable_date} from 9 AM to 6 PM."}
+            return format_response(f"Good news! The doctor is completely free on {readable_date} from 9 AM to 6 PM.", tool_id)
         
         busy_times = []
         for event in events:
@@ -111,37 +127,35 @@ async def check_availability(request: Request):
                 clean_time = start.split('T')[1][:5]
                 busy_times.append(clean_time)
             
-        return {
-            "result": f"On {formatted_date_str}, the doctor is busy at: {', '.join(busy_times)}. Any other time is free."
-        }
+        return format_response(f"On {formatted_date_str}, the doctor is busy at: {', '.join(busy_times)}. Any other time is free.", tool_id)
 
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
-        return {"result": "I'm having a technical issue checking the calendar."}
+        return format_response("I'm having a technical issue checking the calendar.", tool_id)
 
 @app.post("/book_appointment")
 async def book_appointment(request: Request):
     body = await request.json()
     
-    # 1. Extract Args
-    args = get_args_from_vapi(body)
+    # 1. Extract Args & ID
+    args, tool_id = get_vapi_data(body)
     
     day = args.get("day") or args.get("date")
     time = args.get("time")
-    name = args.get("name") # AI needs to ask for name if not provided
+    name = args.get("name")
     
-    print(f"DEBUG: Booking Request -> Day:{day}, Time:{time}, Name:{name}")
+    print(f"DEBUG: Booking '{name}' on '{day}' at '{time}' (Tool ID: {tool_id})")
 
     if not day or not time:
-        return {"result": "I need both a day and a time to book the appointment."}
+        return format_response("I need both a day and a time to book the appointment.", tool_id)
     
     if not name:
-         return {"result": "I just need your name to finalize the booking."}
+         return format_response("I just need your name to finalize the booking.", tool_id)
 
     try:
         date_obj = parse_smart_date(day)
         if not date_obj:
-             return {"result": f"Invalid date: {day}"}
+             return format_response(f"Invalid date: {day}", tool_id)
 
         date_str_clean = date_obj.strftime("%Y-%m-%d")
         start_time_str = f"{date_str_clean}T{time}:00"
@@ -149,7 +163,7 @@ async def book_appointment(request: Request):
         try:
             appt_dt = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M:%S")
         except ValueError:
-             return {"result": f"Invalid time format: {time}. Please use HH:MM."}
+             return format_response(f"Invalid time format: {time}. Please use HH:MM.", tool_id)
 
         end_dt = appt_dt + timedelta(hours=1)
         
@@ -163,10 +177,8 @@ async def book_appointment(request: Request):
 
         service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
         
-        return {
-            "result": f"Appointment confirmed for {name} on {date_str_clean} at {time}."
-        }
+        return format_response(f"Appointment confirmed for {name} on {date_str_clean} at {time}.", tool_id)
         
     except Exception as e:
         print(f"Error booking: {e}")
-        return {"result": "I'm sorry, I couldn't access the booking system right now."}
+        return format_response("I'm sorry, I couldn't access the booking system right now.", tool_id)
